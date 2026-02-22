@@ -558,10 +558,10 @@
           playSfx('sunk');
           const who = currentPlayer===1 ? 'Spieler 1' : (mode==='ai' ? 'KI' : 'Spieler 2');
           setStatus(`${who} versenkt: ${sh.name}`);
-          showPopup(`💥 Versenkt! ${sh.name}`, 'sunk');
+          if (!(mode==='ai' && currentPlayer===2)) showPopup(`💥 Versenkt! ${sh.name}`, 'sunk');
         } else {
           setStatus('Treffer!');
-          showPopup('🎯 Treffer!', 'hit');
+          if (!(mode==='ai' && currentPlayer===2)) showPopup('🎯 Treffer!', 'hit');
         }
       } else {
         cell.miss=true;
