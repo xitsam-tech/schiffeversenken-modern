@@ -149,6 +149,29 @@
     .ship-item.done { background: linear-gradient(180deg,#17875f,#146c4d); border-color: #2fbf8a; }
 
     .small { font-size: 13px; opacity: .95; }
+    .popup {
+      position: fixed;
+      left: 50%;
+      top: 24px;
+      transform: translateX(-50%) translateY(-20px);
+      background: linear-gradient(135deg, rgba(20,40,72,.95), rgba(16,84,128,.95));
+      border: 1px solid #77d9ff;
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-weight: 800;
+      letter-spacing: .3px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.4);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 9999;
+      transition: all .25s ease;
+      color: #e9f8ff;
+    }
+    .popup.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .popup.hit { border-color:#ffd96a; }
+    .popup.sunk { border-color:#ff9e57; }
+    .popup.win { border-color:#6dffad; }
+    .popup.lose { border-color:#ff7f8c; }
     .rules {
       margin: 12px auto 0;
       max-width: 880px;
@@ -172,6 +195,7 @@
 <body>
   <div class="bg-grid"></div>
   <div class="vignette"></div>
+  <div id="popup" class="popup"></div>
   <div class="game">
     <h1>⚓ Schiffeversenken — Modern Pixel</h1>
     <div class="small" style="text-align:center; margin-top:-8px; margin-bottom:10px; opacity:.85;">Neon-Navy UI • inspiriert von modernen Arcade-/Indie-Webgame-Styles</div>
@@ -500,9 +524,12 @@
           sh.sunk=true;
           for(const p of sh.cells){ target.board[p.r][p.c].hit=true; }
           playSfx('sunk');
-          setStatus(`${currentPlayer===1?'Spieler 1':'Spieler 2'} versenkt: ${sh.name}`);
+          const who = currentPlayer===1 ? 'Spieler 1' : (mode==='ai' ? 'KI' : 'Spieler 2');
+          setStatus(`${who} versenkt: ${sh.name}`);
+          showPopup(`💥 Versenkt! ${sh.name}`, 'sunk');
         } else {
           setStatus('Treffer!');
+          showPopup('🎯 Treffer!', 'hit');
         }
       } else {
         cell.miss=true;
@@ -542,6 +569,7 @@
         phase='over';
         const win = aAll;
         setStatus(win ? '🎉 Sieg!' : '💥 Niederlage');
+        showPopup(win ? '🏆 Sieg! Alle gegnerischen Schiffe versenkt.' : '☠️ Niederlage! Deine Flotte wurde versenkt.', win ? 'win' : 'lose', 2600);
         playSfx(win?'win':'lose');
       }
     }
@@ -549,6 +577,18 @@
     function animate(cell, cls){
       const a=document.createElement('div'); a.className=`anim ${cls}`;
       cell.appendChild(a); setTimeout(()=>a.remove(),420);
+    }
+
+    let popupTimer = null;
+    function showPopup(text, type='hit', ms=1200){
+      const el = document.getElementById('popup');
+      if(!el) return;
+      el.className = `popup ${type}`;
+      el.textContent = text;
+      void el.offsetWidth;
+      el.classList.add('show');
+      if(popupTimer) clearTimeout(popupTimer);
+      popupTimer = setTimeout(()=> el.classList.remove('show'), ms);
     }
 
     function setStatus(t){ document.getElementById('status').textContent=t; }
