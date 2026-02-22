@@ -264,6 +264,7 @@
         <button onclick="setSoundStyle('naval')">Sound: Naval v2</button>
       </div>
       <div class="row hide" id="postGameRow">
+        <button onclick="playAgain()">🔁 Nochmal spielen</button>
         <button onclick="goToStart()">↩️ Zum Startbildschirm</button>
       </div>
       <div class="rules">
@@ -761,6 +762,15 @@
         document.getElementById('postGameRow')?.classList.remove('hide');
         showPopup(win ? '🏆 Sieg! Alle gegnerischen Schiffe versenkt.' : '☠️ Niederlage! Deine Flotte wurde versenkt.', win ? 'win' : 'lose', 2600);
         playSfx(win?'win':'lose');
+      }
+    }
+
+    function playAgain(){
+      document.getElementById('postGameRow')?.classList.add('hide');
+      if(mode==='ai') startNew(difficulty);
+      else {
+        // Im Hotseat direkt neu in die Platzierungsphase
+        startNew('mittel');
       }
     }
 
