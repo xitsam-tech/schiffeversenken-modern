@@ -149,6 +149,18 @@
     .ship-item.done { background: linear-gradient(180deg,#17875f,#146c4d); border-color: #2fbf8a; }
 
     .small { font-size: 13px; opacity: .95; }
+    .rules {
+      margin: 12px auto 0;
+      max-width: 880px;
+      text-align: left;
+      background: rgba(9, 27, 49, .65);
+      border: 1px solid #335f95;
+      border-radius: 10px;
+      padding: 12px 14px;
+      line-height: 1.45;
+      font-size: 13px;
+    }
+    .rules b { color: #9fdcff; }
     .hide { display: none !important; }
 
     @media (max-width: 980px) {
@@ -175,6 +187,15 @@
         <button onclick="startNew('schwer')">Schwer</button>
       </div>
       <div class="small">Pixel-Sprites + Animationen + Soundeffekte aktiv. R = Schiff drehen.</div>
+      <div class="rules">
+        <b>Spielregeln:</b><br>
+        • 10×10 Feld, 5 Schiffe pro Seite (5/4/3/3/2).<br>
+        • Schiffe nur horizontal oder vertikal.<br>
+        • Schiffe dürfen sich <b>nicht berühren</b> (auch nicht diagonal).<br>
+        • Pro Zug ein Schuss. Ergebnis: Wasser / Treffer / Versenkt.<br>
+        • Wer alle gegnerischen Schiffe versenkt, gewinnt.<br>
+        • Diese Regeln gelten für Spieler <b>und</b> KI gleichermaßen.
+      </div>
     </div>
 
     <div id="placement" class="hide">
@@ -366,11 +387,23 @@
     }
 
     function canPlace(board,r,c,size,h){
+      const planned=[];
       for(let i=0;i<size;i++){
         const rr = h ? r : r+i;
         const cc = h ? c+i : c;
         if(rr<0||cc<0||rr>=N||cc>=N) return false;
         if(board[rr][cc].ship) return false;
+        planned.push([rr,cc]);
+      }
+      // Regel: Schiffe dürfen sich nicht berühren (auch nicht diagonal)
+      for (const [rr,cc] of planned) {
+        for (let dr=-1; dr<=1; dr++) {
+          for (let dc=-1; dc<=1; dc++) {
+            const nr = rr + dr, nc = cc + dc;
+            if (nr<0 || nc<0 || nr>=N || nc>=N) continue;
+            if (board[nr][nc].ship) return false;
+          }
+        }
       }
       return true;
     }
@@ -476,15 +509,17 @@
         animate(el,'missfx');
         playSfx('miss');
         setStatus('Daneben.');
-        currentPlayer = currentPlayer===1 ? 2 : 1;
-        if(mode==='ai' && currentPlayer===2){
-          setTimeout(aiMove, 500);
-          return;
-        }
-        playSfx('turn');
       }
+
+      // Regel: genau ein Schuss pro Zug (für Spieler und KI)
+      currentPlayer = currentPlayer===1 ? 2 : 1;
       refreshBoardVisuals();
       checkGameOver();
+      if(phase==='battle' && mode==='ai' && currentPlayer===2){
+        setTimeout(aiMove, 500);
+        return;
+      }
+      playSfx('turn');
     }
 
     function aiMove(){
@@ -498,10 +533,6 @@
 
       const fakeEl = document.querySelector(`#boardLeft .cell[data-r='${r}'][data-c='${c}']`);
       battleClick('left',r,c,fakeEl);
-      if(phase==='battle' && currentPlayer===2){
-        // KI hat getroffen und darf weiter
-        setTimeout(aiMove, 500);
-      }
     }
 
     function checkGameOver(){
