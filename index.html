@@ -6,27 +6,89 @@
   <title>Schiffeversenken Modern Pixel</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --cyan:#6ee7ff;
+      --blue:#2ca4ff;
+      --deep:#071325;
+      --panel:#0d1f37cc;
+      --line:#3e6ca8;
+    }
     body {
       font-family: Inter, Segoe UI, Arial, sans-serif;
-      background: radial-gradient(circle at 20% 20%, #0a2a52 0, #08172d 45%, #050b16 100%);
+      background:
+        radial-gradient(circle at 18% 15%, #103b77 0, transparent 32%),
+        radial-gradient(circle at 85% 10%, #3b1a7a 0, transparent 28%),
+        linear-gradient(180deg, #050d1a 0%, #071325 55%, #03070f 100%);
       color: #e9f3ff;
       min-height: 100vh;
       display: grid;
       place-items: center;
       padding: 16px;
+      overflow-x: hidden;
     }
-    .game { width: min(1250px, 100%); background: rgba(8, 20, 36, .85); border: 1px solid #2a4e7e; border-radius: 18px; padding: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
-    h1 { text-align: center; margin-bottom: 14px; color: #88d4ff; }
+    .bg-grid {
+      position: fixed; inset: 0; pointer-events: none; opacity: .22;
+      background-image:
+        linear-gradient(rgba(99,180,255,.22) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,180,255,.2) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: radial-gradient(circle at 50% 45%, #000 35%, transparent 90%);
+    }
+    .vignette {
+      position: fixed; inset: 0; pointer-events: none;
+      background: radial-gradient(circle at center, transparent 35%, rgba(0,0,0,.6) 100%);
+    }
+    .game {
+      position: relative;
+      width: min(1250px, 100%);
+      background: linear-gradient(180deg, rgba(11,26,46,.92), rgba(7,18,34,.92));
+      border: 1px solid #3f74b9;
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.45), 0 0 35px rgba(80,170,255,.15);
+      backdrop-filter: blur(8px);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 14px;
+      color: #9ddfff;
+      letter-spacing: .5px;
+      text-shadow: 0 0 14px rgba(110,231,255,.35);
+    }
     .setup, .status { margin-bottom: 14px; text-align: center; }
+    .status {
+      border: 1px solid #2f5d95;
+      background: rgba(10,30,56,.6);
+      border-radius: 10px;
+      padding: 10px;
+      box-shadow: inset 0 0 10px rgba(62,131,204,.15);
+    }
     .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 10px 0; }
     button {
-      background: linear-gradient(135deg, #17a8ff, #6957ff);
-      color: #fff; border: none; border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer;
+      background: linear-gradient(135deg, #13b5ff, #5569ff 55%, #8a4dff);
+      color: #fff;
+      border: 1px solid rgba(184,232,255,.5);
+      border-radius: 11px;
+      padding: 10px 14px;
+      font-weight: 800;
+      cursor: pointer;
       box-shadow: 0 6px 18px rgba(0,0,0,.35);
+      transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
     }
-    button:disabled { opacity: .45; cursor: not-allowed; }
+    button:hover {
+      transform: translateY(-1px) scale(1.02);
+      box-shadow: 0 10px 24px rgba(52,127,255,.35);
+      filter: saturate(1.08);
+    }
+    button:disabled { opacity: .45; cursor: not-allowed; transform:none; }
     .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .panel { background: rgba(11, 26, 46, .75); border: 1px solid #315a91; border-radius: 12px; padding: 10px; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: inset 0 0 16px rgba(82,146,224,.08);
+    }
     .panel h3 { text-align: center; margin-bottom: 8px; color: #a8deff; }
     .board {
       display: grid;
@@ -39,14 +101,16 @@
     .cell {
       position: relative;
       border: 1px solid #3568a0;
-      background: linear-gradient(180deg, #0e4f8f, #0a3a6b);
+      background:
+        linear-gradient(180deg, #0e4f8f, #0a3a6b),
+        repeating-linear-gradient(45deg, rgba(255,255,255,.04) 0 2px, transparent 2px 6px);
       display: grid;
       place-items: center;
       color: #cbe9ff;
       overflow: hidden;
     }
-    .header { background: linear-gradient(180deg, #193f72, #122d53); font-size: 12px; font-weight: 800; }
-    .clickable:hover { filter: brightness(1.2); cursor: crosshair; }
+    .header { background: linear-gradient(180deg, #1a4a86, #12345f); font-size: 12px; font-weight: 800; }
+    .clickable:hover { filter: brightness(1.22) saturate(1.1); cursor: crosshair; }
 
     .ship-cell {
       background-size: cover;
@@ -55,9 +119,9 @@
     }
     .ship-hidden { background-image: none !important; }
 
-    .hit { background: #741010 !important; }
-    .miss { background: #0d5474 !important; }
-    .sunk { outline: 2px solid #ff8f36; }
+    .hit { background: linear-gradient(180deg,#8e1e1e,#5d1010) !important; box-shadow: inset 0 0 10px rgba(255,128,64,.4); }
+    .miss { background: linear-gradient(180deg,#1779a5,#115679) !important; }
+    .sunk { outline: 2px solid #ff8f36; box-shadow: 0 0 12px rgba(255,143,54,.45); }
 
     .anim {
       position: absolute; width: 28px; height: 28px; pointer-events: none; image-rendering: pixelated;
@@ -67,14 +131,22 @@
     .anim.missfx { background: radial-gradient(circle, #d3f2ff 0 18%, #8ee7ff 19% 42%, #1fa5cf 43% 100%); }
     @keyframes pop {
       0% { transform: scale(.2); opacity: 0; }
-      45% { transform: scale(1.3); opacity: 1; }
+      45% { transform: scale(1.35); opacity: 1; }
       100% { transform: scale(1); opacity: 0; }
     }
 
     .ship-list { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 8px 0; }
-    .ship-item { padding: 8px 10px; border: 1px solid #4f80bc; border-radius: 8px; background: #102849; cursor: pointer; }
-    .ship-item.sel { outline: 2px solid #89d5ff; }
-    .ship-item.done { background: #176246; border-color: #2fbf8a; }
+    .ship-item {
+      padding: 8px 10px;
+      border: 1px solid #4f80bc;
+      border-radius: 8px;
+      background: linear-gradient(180deg,#123055,#0f2745);
+      cursor: pointer;
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .ship-item:hover { transform: translateY(-1px); box-shadow: 0 6px 12px rgba(0,0,0,.25); }
+    .ship-item.sel { outline: 2px solid #89d5ff; box-shadow: 0 0 10px rgba(137,213,255,.35); }
+    .ship-item.done { background: linear-gradient(180deg,#17875f,#146c4d); border-color: #2fbf8a; }
 
     .small { font-size: 13px; opacity: .95; }
     .hide { display: none !important; }
@@ -86,8 +158,11 @@
   </style>
 </head>
 <body>
+  <div class="bg-grid"></div>
+  <div class="vignette"></div>
   <div class="game">
     <h1>⚓ Schiffeversenken — Modern Pixel</h1>
+    <div class="small" style="text-align:center; margin-top:-8px; margin-bottom:10px; opacity:.85;">Neon-Navy UI • inspiriert von modernen Arcade-/Indie-Webgame-Styles</div>
 
     <div id="setup" class="setup">
       <div class="row">
