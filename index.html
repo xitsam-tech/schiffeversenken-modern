@@ -290,6 +290,8 @@
     let selShip = null;
     let horizontal = true;
     let aiTargets = [];
+    let aiFocusShipId = null;
+    let aiHitCells = [];
     let lastTapAt = 0;
 
     const state = {
@@ -336,6 +338,8 @@
       phase = 'placement';
       document.getElementById('postGameRow')?.classList.add('hide');
       aiTargets = [];
+      aiFocusShipId = null;
+      aiHitCells = [];
       placementPlayer = 1;
       currentPlayer = 1;
       state.p1 = makePlayer('Spieler 1');
@@ -617,14 +621,34 @@
       playSfx('turn');
     }
 
+    function pushAiTarget(nr,nc){
+      if(nr<0||nc<0||nr>=N||nc>=N) return;
+      const k = key(nr,nc);
+      if(state.p1.shots.has(k)) return;
+      if(aiTargets.some(t => t[0]===nr && t[1]===nc)) return;
+      aiTargets.push([nr,nc]);
+    }
+
     function enqueueAiNeighbors(r,c){
-      const candidates = [[r-1,c],[r+1,c],[r,c-1],[r,c+1]];
-      for(const [nr,nc] of candidates){
-        if(nr<0||nc<0||nr>=N||nc>=N) continue;
-        const k = key(nr,nc);
-        if(state.p1.shots.has(k)) continue;
-        if(aiTargets.some(t => t[0]===nr && t[1]===nc)) continue;
-        aiTargets.push([nr,nc]);
+      pushAiTarget(r-1,c); pushAiTarget(r+1,c); pushAiTarget(r,c-1); pushAiTarget(r,c+1);
+    }
+
+    function enqueueAiLineTargets(){
+      if(aiHitCells.length < 2) return;
+      const rows = aiHitCells.map(h=>h[0]);
+      const cols = aiHitCells.map(h=>h[1]);
+      const sameRow = rows.every(v => v===rows[0]);
+      const sameCol = cols.every(v => v===cols[0]);
+
+      aiTargets = [];
+      if(sameRow){
+        const r = rows[0], minC = Math.min(...cols), maxC = Math.max(...cols);
+        pushAiTarget(r, minC-1);
+        pushAiTarget(r, maxC+1);
+      } else if(sameCol){
+        const c = cols[0], minR = Math.min(...rows), maxR = Math.max(...rows);
+        pushAiTarget(minR-1, c);
+        pushAiTarget(maxR+1, c);
       }
     }
 
@@ -647,10 +671,32 @@
         [r,c] = list[(Math.random()*list.length)|0];
       }
 
-      const willHit = !!state.p1.board[r][c].ship;
+      const targetCell = state.p1.board[r][c];
+      const willHit = !!targetCell.ship;
+      const hitShipId = willHit ? targetCell.ship.id : null;
+      const willSink = willHit ? (state.p1.ships[hitShipId].hits + 1 >= state.p1.ships[hitShipId].size) : false;
+
       const fakeEl = document.querySelector(`#boardLeft .cell[data-r='${r}'][data-c='${c}']`);
       battleClick('left',r,c,fakeEl);
-      if(willHit) enqueueAiNeighbors(r,c);
+
+      if(!willHit) return;
+
+      if(willSink){
+        aiFocusShipId = null;
+        aiHitCells = [];
+        aiTargets = [];
+        return;
+      }
+
+      if(!aiFocusShipId || aiFocusShipId !== hitShipId){
+        aiFocusShipId = hitShipId;
+        aiHitCells = [];
+        aiTargets = [];
+      }
+
+      aiHitCells.push([r,c]);
+      if(aiHitCells.length >= 2) enqueueAiLineTargets();
+      else enqueueAiNeighbors(r,c);
     }
 
     function checkGameOver(){
@@ -672,6 +718,8 @@
       placementPlayer = 1;
       selShip = null;
       aiTargets = [];
+      aiFocusShipId = null;
+      aiHitCells = [];
       document.getElementById('postGameRow')?.classList.add('hide');
       document.getElementById('placement').classList.add('hide');
       document.getElementById('boards').classList.add('hide');
