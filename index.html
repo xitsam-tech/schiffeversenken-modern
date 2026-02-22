@@ -231,7 +231,6 @@
         <button onclick="setFxLevel('high')">FX hoch</button>
         <button onclick="setSoundStyle('arcade')">Sound: Arcade v2</button>
         <button onclick="setSoundStyle('naval')">Sound: Naval v2</button>
-        <button id="musicToggle" onclick="toggleMusic()">Musik: Aus</button>
       </div>
       <div class="row hide" id="postGameRow">
         <button onclick="goToStart()">↩️ Zum Startbildschirm</button>
@@ -272,8 +271,7 @@
     </div>
   </div>
 
-  <audio id="bg-menu" src="assets/audio/menu.ogg" preload="auto" loop></audio>
-
+  
   <script>
     const N = 10;
     const SHIPS = [
@@ -304,8 +302,7 @@
     let actx;
     let fxLevel = 'normal';
     let soundStyle = 'arcade';
-    let musicOn = false;
-
+    
     function makePlayer(name){
       return { name, board:emptyBoard(), ships:{}, shots:new Set(), hits:0, totalShots:0 };
     }
@@ -326,7 +323,7 @@
     function setSoundStyle(style='arcade'){
       soundStyle = style;
       showPopup(`Sound: ${style==='naval' ? 'Naval' : 'Arcade'}`, 'hit', 900);
-      if (musicOn) playMenuLoop();
+      
     }
 
     function ensureAudio(){
@@ -334,43 +331,9 @@
       if(actx.state === 'suspended') actx.resume();
     }
 
-    function toggleMusic(){
-      ensureAudio();
-      musicOn = !musicOn;
-      const btn = document.getElementById('musicToggle');
-      const menu = document.getElementById('bg-menu');
-      if(btn) btn.textContent = `Musik: ${musicOn ? 'An' : 'Aus'}`;
-      if(!menu) return;
-      menu.volume = fxLevel === 'low' ? 0.18 : (fxLevel === 'high' ? 0.45 : 0.3);
-      if(musicOn && phase === 'setup'){
-        showPopup('🎵 Flotten-Melodie an', 'hit', 900);
-        menu.currentTime = 0;
-        menu.play().catch(()=>{});
-      } else {
-        menu.pause();
-        menu.currentTime = 0;
-      }
-    }
-
-    function playMenuLoop(){
-      const menu = document.getElementById('bg-menu');
-      if(!menu) return;
-      if(soundStyle==='naval'){
-        menu.volume = fxLevel === 'low' ? 0.1 : (fxLevel === 'high' ? 0.25 : 0.16);
-        menu.playbackRate = 0.85;
-      } else {
-        menu.volume = fxLevel === 'low' ? 0.18 : (fxLevel === 'high' ? 0.45 : 0.3);
-        menu.playbackRate = 1;
-      }
-      if(musicOn && phase === 'setup') menu.play().catch(()=>{});
-      else menu.pause();
-    }
-
     function startNew(diff='mittel'){
       difficulty = diff;
       phase = 'placement';
-      const menu = document.getElementById('bg-menu');
-      if(menu){ menu.pause(); menu.currentTime = 0; }
       document.getElementById('postGameRow')?.classList.add('hide');
       aiTargets = [];
       placementPlayer = 1;
@@ -714,7 +677,7 @@
       document.getElementById('boards').classList.add('hide');
       document.getElementById('status').classList.add('hide');
       document.getElementById('setup').classList.remove('hide');
-      if (musicOn) playMenuLoop();
+      
     }
 
     function animate(cell, cls){
