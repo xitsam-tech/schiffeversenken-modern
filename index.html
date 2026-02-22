@@ -655,8 +655,12 @@
         if (!enemyActionOnMe) setStatus('Daneben.');
       }
 
-      // Regel: genau ein Schuss pro Zug (für Spieler und KI)
-      currentPlayer = currentPlayer===1 ? 2 : 1;
+      // Regel: Bei Treffer darf derselbe Spieler nochmal schießen; bei Fehlschuss wechselt der Zug.
+      if(!cell.ship){
+        currentPlayer = currentPlayer===1 ? 2 : 1;
+        playSfx('turn');
+      }
+
       refreshBoardVisuals();
       checkGameOver();
       updateHud();
@@ -667,7 +671,6 @@
         setTimeout(aiMove, 500);
         return;
       }
-      playSfx('turn');
     }
 
     function pushAiTarget(nr,nc){
