@@ -97,6 +97,7 @@
       gap: 2px;
       justify-content: center;
       user-select: none;
+      touch-action: manipulation;
     }
     .cell {
       position: relative;
@@ -190,6 +191,19 @@
       .boards { grid-template-columns: 1fr; }
       .board { grid-template-columns: repeat(11, 30px); grid-template-rows: repeat(11, 30px); }
     }
+    @media (max-width: 640px) {
+      body { padding: 8px; }
+      .game { padding: 10px; border-radius: 12px; }
+      h1 { font-size: 1.25rem; margin-bottom: 8px; }
+      .panel { padding: 6px; }
+      .board { grid-template-columns: repeat(11, 25px); grid-template-rows: repeat(11, 25px); gap: 1px; }
+      .cell { font-size: 11px; }
+      .row { gap: 6px; margin: 6px 0; }
+      button { padding: 8px 10px; font-size: 13px; border-radius: 8px; }
+      .rules { font-size: 12px; padding: 8px 10px; }
+      .popup { top: 8px; width: calc(100% - 16px); left: 8px; transform: translateY(-20px); padding: 10px 12px; }
+      .popup.show { transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
@@ -211,6 +225,11 @@
         <button onclick="startNew('schwer')">Schwer</button>
       </div>
       <div class="small">Pixel-Sprites + Animationen + Soundeffekte aktiv. R = Schiff drehen.</div>
+      <div class="row" style="margin-top:8px;">
+        <button onclick="setFxLevel('low')">FX niedrig</button>
+        <button onclick="setFxLevel('normal')">FX normal</button>
+        <button onclick="setFxLevel('high')">FX hoch</button>
+      </div>
       <div class="rules">
         <b>Spielregeln:</b><br>
         • 10×10 Feld, 5 Schiffe pro Seite (5/4/3/3/2).<br>
@@ -226,10 +245,11 @@
       <div class="status" id="placementTitle"></div>
       <div class="ship-list" id="shipList"></div>
       <div class="row">
+        <button onclick="toggleOrientation()">Drehen ↻</button>
         <button onclick="randomPlacement()">Zufällig platzieren</button>
         <button onclick="finishPlacement()" id="btnPlacementDone" disabled>Platzierung fertig</button>
       </div>
-      <div class="small" style="text-align:center">Wähle Schiff → klicke Feld. Taste R wechselt Horizontal/Vertikal.</div>
+      <div class="small" style="text-align:center">Wähle Schiff → tippe Feld. Taste R oder Button „Drehen“ wechselt Horizontal/Vertikal.</div>
     </div>
 
     <div id="status" class="status hide"></div>
@@ -272,6 +292,7 @@
 
     const sprites = {};
     let actx;
+    let fxLevel = 'normal';
 
     function makePlayer(name){
       return { name, board:emptyBoard(), ships:{}, shots:new Set(), hits:0, totalShots:0 };
@@ -283,6 +304,11 @@
       mode = m;
       document.getElementById('difficultyRow').classList.toggle('hide', m==='pvp');
       setStatus(m==='pvp' ? 'Modus: 1 vs 1 Hotseat gewählt.' : 'Modus: Solo vs KI gewählt.');
+    }
+
+    function setFxLevel(level='normal'){
+      fxLevel = level;
+      showPopup(`FX-Level: ${level.toUpperCase()}`, 'hit', 900);
     }
 
     function startNew(diff='mittel'){
@@ -310,6 +336,12 @@
     function setPlacementTitle(){
       const who = placementPlayer===1 ? 'Spieler 1' : (mode==='pvp' ? 'Spieler 2' : 'du');
       document.getElementById('placementTitle').textContent = `Platzierung: ${who} (${horizontal?'Horizontal':'Vertikal'})`;
+    }
+
+    function toggleOrientation(){
+      horizontal = !horizontal;
+      setPlacementTitle();
+      playSfx('turn');
     }
 
     function renderShipList(){
@@ -583,12 +615,14 @@
     function showPopup(text, type='hit', ms=1200){
       const el = document.getElementById('popup');
       if(!el) return;
+      if (fxLevel === 'low' && (type === 'hit' || type === 'sunk')) return;
+      const scale = fxLevel === 'high' ? 1.2 : (fxLevel === 'low' ? 0.8 : 1);
       el.className = `popup ${type}`;
       el.textContent = text;
       void el.offsetWidth;
       el.classList.add('show');
       if(popupTimer) clearTimeout(popupTimer);
-      popupTimer = setTimeout(()=> el.classList.remove('show'), ms);
+      popupTimer = setTimeout(()=> el.classList.remove('show'), Math.round(ms * scale));
     }
 
     function setStatus(t){ document.getElementById('status').textContent=t; }
@@ -623,11 +657,12 @@
           lose:[[300,.08,'sine'],[220,.1,'triangle'],[150,.14,'sine']]
         }[type] || [[300,.05,'sine']];
 
+        const volume = fxLevel === 'low' ? 0.06 : (fxLevel === 'high' ? 0.18 : 0.12);
         let t = now;
         for(const [f,d,w] of tones){
           const o=actx.createOscillator(), g=actx.createGain();
           o.type=w; o.frequency.value=f;
-          g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.12,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+d);
+          g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(volume,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+d);
           o.connect(g); g.connect(actx.destination);
           o.start(t); o.stop(t+d+.01);
           t+=d*.75;
@@ -636,7 +671,7 @@
     }
 
     window.addEventListener('keydown', (e)=>{
-      if(e.key.toLowerCase()==='r'){ horizontal=!horizontal; setPlacementTitle(); playSfx('turn'); }
+      if(e.key.toLowerCase()==='r'){ toggleOrientation(); }
     });
 
     initSprites();
