@@ -297,6 +297,7 @@
     let selShip = null;
     let horizontal = true;
     let aiTargets = [];
+    let lastTapAt = 0;
 
     const state = {
       p1: makePlayer('Spieler 1'),
@@ -482,6 +483,16 @@
     }
 
     function onBoardCellClick(side,r,c,cellEl){
+      const now = Date.now();
+      if (now - lastTapAt < 220) return; // double-tap Schutz
+      lastTapAt = now;
+
+      if (cellEl && cellEl.dataset.tapLock === '1') return;
+      if (cellEl) {
+        cellEl.dataset.tapLock = '1';
+        setTimeout(() => { if(cellEl) cellEl.dataset.tapLock = '0'; }, 260);
+      }
+
       if(phase==='placement') return placementClick(side,r,c);
       if(phase==='battle') return battleClick(side,r,c,cellEl);
     }
