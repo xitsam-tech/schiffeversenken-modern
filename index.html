@@ -231,6 +231,9 @@
         <button onclick="setFxLevel('high')">FX hoch</button>
         <button id="musicToggle" onclick="toggleMusic()">Musik: Aus</button>
       </div>
+      <div class="row hide" id="postGameRow">
+        <button onclick="goToStart()">↩️ Zum Startbildschirm</button>
+      </div>
       <div class="rules">
         <b>Spielregeln:</b><br>
         • 10×10 Feld, 5 Schiffe pro Seite (5/4/3/3/2).<br>
@@ -359,6 +362,7 @@
       difficulty = diff;
       phase = 'placement';
       if(musicTimer) { clearTimeout(musicTimer); musicTimer = null; }
+      document.getElementById('postGameRow')?.classList.add('hide');
       placementPlayer = 1;
       currentPlayer = 1;
       state.p1 = makePlayer('Spieler 1');
@@ -591,6 +595,7 @@
       target.shots.add(key(r,c));
       shooter.totalShots++;
       const cell = target.board[r][c];
+      const enemyActionOnMe = (mode==='ai' && currentPlayer===2);
       if(cell.ship){
         cell.hit=true; shooter.hits++;
         animate(el,'hitfx');
@@ -602,23 +607,26 @@
           for(const p of sh.cells){ target.board[p.r][p.c].hit=true; }
           playSfx('sunk');
           const who = currentPlayer===1 ? 'Spieler 1' : (mode==='ai' ? 'KI' : 'Spieler 2');
-          setStatus(`${who} versenkt: ${sh.name}`);
-          if (!(mode==='ai' && currentPlayer===2)) showPopup(`💥 Versenkt! ${sh.name}`, 'sunk');
+          if (!enemyActionOnMe) setStatus(`${who} versenkt: ${sh.name}`);
+          if (!enemyActionOnMe) showPopup(`💥 Versenkt! ${sh.name}`, 'sunk');
         } else {
-          setStatus('Treffer!');
-          if (!(mode==='ai' && currentPlayer===2)) showPopup('🎯 Treffer!', 'hit');
+          if (!enemyActionOnMe) setStatus('Treffer!');
+          if (!enemyActionOnMe) showPopup('🎯 Treffer!', 'hit');
         }
       } else {
         cell.miss=true;
         animate(el,'missfx');
         playSfx('miss');
-        setStatus('Daneben.');
+        if (!enemyActionOnMe) setStatus('Daneben.');
       }
 
       // Regel: genau ein Schuss pro Zug (für Spieler und KI)
       currentPlayer = currentPlayer===1 ? 2 : 1;
       refreshBoardVisuals();
       checkGameOver();
+      if (phase==='battle' && mode==='ai' && currentPlayer===1) {
+        setStatus('Dein Zug auf dem rechten Feld.');
+      }
       if(phase==='battle' && mode==='ai' && currentPlayer===2){
         setTimeout(aiMove, 500);
         return;
@@ -646,9 +654,23 @@
         phase='over';
         const win = aAll;
         setStatus(win ? '🎉 Sieg!' : '💥 Niederlage');
+        document.getElementById('postGameRow')?.classList.remove('hide');
         showPopup(win ? '🏆 Sieg! Alle gegnerischen Schiffe versenkt.' : '☠️ Niederlage! Deine Flotte wurde versenkt.', win ? 'win' : 'lose', 2600);
         playSfx(win?'win':'lose');
       }
+    }
+
+    function goToStart(){
+      phase = 'setup';
+      currentPlayer = 1;
+      placementPlayer = 1;
+      selShip = null;
+      document.getElementById('postGameRow')?.classList.add('hide');
+      document.getElementById('placement').classList.add('hide');
+      document.getElementById('boards').classList.add('hide');
+      document.getElementById('status').classList.add('hide');
+      document.getElementById('setup').classList.remove('hide');
+      if (musicOn) playMenuLoop();
     }
 
     function animate(cell, cls){
