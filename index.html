@@ -229,6 +229,8 @@
         <button onclick="setFxLevel('low')">FX niedrig</button>
         <button onclick="setFxLevel('normal')">FX normal</button>
         <button onclick="setFxLevel('high')">FX hoch</button>
+        <button onclick="setSoundStyle('arcade')">Sound: Arcade</button>
+        <button onclick="setSoundStyle('naval')">Sound: Naval</button>
         <button id="musicToggle" onclick="toggleMusic()">Musik: Aus</button>
       </div>
       <div class="row hide" id="postGameRow">
@@ -305,6 +307,7 @@
     const sprites = {};
     let actx;
     let fxLevel = 'normal';
+    let soundStyle = 'arcade';
     let musicOn = false;
 
     function makePlayer(name){
@@ -322,6 +325,12 @@
     function setFxLevel(level='normal'){
       fxLevel = level;
       showPopup(`FX-Level: ${level.toUpperCase()}`, 'hit', 900);
+    }
+
+    function setSoundStyle(style='arcade'){
+      soundStyle = style;
+      showPopup(`Sound: ${style==='naval' ? 'Naval' : 'Arcade'}`, 'hit', 900);
+      if (musicOn) playMenuLoop();
     }
 
     function ensureAudio(){
@@ -350,7 +359,13 @@
     function playMenuLoop(){
       const menu = document.getElementById('bg-menu');
       if(!menu) return;
-      menu.volume = fxLevel === 'low' ? 0.18 : (fxLevel === 'high' ? 0.45 : 0.3);
+      if(soundStyle==='naval'){
+        menu.volume = fxLevel === 'low' ? 0.1 : (fxLevel === 'high' ? 0.25 : 0.16);
+        menu.playbackRate = 0.85;
+      } else {
+        menu.volume = fxLevel === 'low' ? 0.18 : (fxLevel === 'high' ? 0.45 : 0.3);
+        menu.playbackRate = 1;
+      }
       if(musicOn && phase === 'setup') menu.play().catch(()=>{});
       else menu.pause();
     }
@@ -736,45 +751,44 @@
     function playSfx(type){
       try {
         ensureAudio();
-        const map = {
-          hit: 'sfx-hit',
-          miss: 'sfx-miss',
-          sunk: 'sfx-sunk',
-          win: 'sfx-win',
-          lose: 'sfx-lose'
-        };
-        const id = map[type];
-        if(id){
-          const a = document.getElementById(id);
-          if(a){
-            a.volume = fxLevel === 'low' ? 0.2 : (fxLevel === 'high' ? 0.65 : 0.4);
-            a.currentTime = 0;
-            a.play().catch(()=>{});
-            return;
-          }
-        }
 
-        // Fallback-Synth, falls Audio-Dateien nicht verfügbar sind
         const now = actx.currentTime;
-        const tones = {
-          place:[[300,.04,'triangle']],
-          miss:[[180,.08,'sine']],
-          hit:[[520,.05,'square'],[320,.08,'triangle']],
-          sunk:[[440,.06,'square'],[280,.08,'sawtooth'],[180,.12,'triangle']],
-          turn:[[660,.05,'sine']],
-          win:[[520,.08,'square'],[660,.09,'square'],[880,.12,'triangle']],
-          lose:[[300,.08,'sine'],[220,.1,'triangle'],[150,.14,'sine']]
-        }[type] || [[300,.05,'sine']];
+        const volume = fxLevel === 'low' ? 0.05 : (fxLevel === 'high' ? 0.16 : 0.1);
 
-        const volume = fxLevel === 'low' ? 0.06 : (fxLevel === 'high' ? 0.18 : 0.12);
+        const profiles = {
+          arcade: {
+            place:[[300,.04,'triangle']],
+            miss:[[180,.07,'sine']],
+            hit:[[620,.05,'square'],[420,.06,'triangle']],
+            sunk:[[520,.06,'square'],[340,.08,'sawtooth'],[210,.12,'triangle']],
+            turn:[[700,.04,'sine']],
+            win:[[520,.08,'square'],[740,.09,'square'],[980,.12,'triangle']],
+            lose:[[280,.08,'sine'],[210,.1,'triangle'],[150,.14,'sine']]
+          },
+          naval: {
+            place:[[220,.04,'sine']],
+            miss:[[140,.09,'triangle'],[120,.12,'sine']],
+            hit:[[260,.06,'sawtooth'],[180,.11,'triangle']],
+            sunk:[[180,.08,'sawtooth'],[120,.14,'triangle'],[90,.16,'sine']],
+            turn:[[320,.03,'sine']],
+            win:[[240,.1,'triangle'],[300,.11,'triangle'],[380,.12,'sine']],
+            lose:[[170,.1,'sine'],[130,.14,'triangle'],[98,.16,'sine']]
+          }
+        };
+
+        const tones = (profiles[soundStyle] || profiles.arcade)[type] || [[300,.05,'sine']];
         let t = now;
         for(const [f,d,w] of tones){
-          const o=actx.createOscillator(), g=actx.createGain();
+          const o=actx.createOscillator(), g=actx.createGain(), lp=actx.createBiquadFilter();
           o.type=w; o.frequency.value=f;
-          g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(volume,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-          o.connect(g); g.connect(actx.destination);
+          lp.type='lowpass';
+          lp.frequency.value = soundStyle==='naval' ? 900 : 2400;
+          g.gain.setValueAtTime(.0001,t);
+          g.gain.exponentialRampToValueAtTime(volume,t+.01);
+          g.gain.exponentialRampToValueAtTime(.0001,t+d);
+          o.connect(lp); lp.connect(g); g.connect(actx.destination);
           o.start(t); o.stop(t+d+.01);
-          t+=d*.75;
+          t+=d*.72;
         }
       } catch(e){}
     }
