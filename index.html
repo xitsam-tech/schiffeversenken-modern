@@ -122,7 +122,11 @@
 
     .hit { background: linear-gradient(180deg,#8e1e1e,#5d1010) !important; box-shadow: inset 0 0 10px rgba(255,128,64,.4); }
     .miss { background: linear-gradient(180deg,#1779a5,#115679) !important; }
-    .sunk { outline: 2px solid #ff8f36; box-shadow: 0 0 12px rgba(255,143,54,.45); }
+    .sunk {
+      outline: 2px solid #ff8f36;
+      box-shadow: 0 0 12px rgba(255,143,54,.45), inset 0 0 14px rgba(0,0,0,.45);
+      filter: saturate(.35) brightness(.8);
+    }
 
     .anim {
       position: absolute; width: 28px; height: 28px; pointer-events: none; image-rendering: pixelated;
@@ -435,9 +439,17 @@
         if(v.ship && showShips){
           c.classList.add('ship-cell');
           c.style.backgroundImage = `url(${sprites[v.ship.id]})`;
+          if (board[r][col].ship && (board[r][col].ship.id in (mode==='pvp' && board===state.p2.board ? state.p2.ships : (board===state.p1.board ? state.p1.ships : state.ai.ships)))) {
+            const shipsRef = (mode==='pvp' && board===state.p2.board) ? state.p2.ships : (board===state.p1.board ? state.p1.ships : state.ai.ships);
+            if (shipsRef[v.ship.id]?.sunk) c.classList.add('sunk');
+          }
         }
         if(v.hit){ c.classList.add('hit'); c.textContent='✖'; }
         if(v.miss){ c.classList.add('miss'); c.textContent='•'; }
+        if(v.ship && (board===state.p1.board ? state.p1.ships[v.ship.id]?.sunk : (board===state.ai.board ? state.ai.ships[v.ship.id]?.sunk : state.p2.ships[v.ship.id]?.sunk))){
+          c.classList.add('sunk');
+          if(v.hit) c.textContent='☠';
+        }
       });
       if(hideByTurn){
         root.style.filter='brightness(.7)';
