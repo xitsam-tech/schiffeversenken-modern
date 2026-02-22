@@ -294,6 +294,7 @@
     let currentPlayer = 1; // turn owner in battle
     let selShip = null;
     let horizontal = true;
+    let aiTargets = [];
 
     const state = {
       p1: makePlayer('Spieler 1'),
@@ -360,6 +361,7 @@
       const menu = document.getElementById('bg-menu');
       if(menu){ menu.pause(); menu.currentTime = 0; }
       document.getElementById('postGameRow')?.classList.add('hide');
+      aiTargets = [];
       placementPlayer = 1;
       currentPlayer = 1;
       state.p1 = makePlayer('Spieler 1');
@@ -631,17 +633,40 @@
       playSfx('turn');
     }
 
+    function enqueueAiNeighbors(r,c){
+      const candidates = [[r-1,c],[r+1,c],[r,c-1],[r,c+1]];
+      for(const [nr,nc] of candidates){
+        if(nr<0||nc<0||nr>=N||nc>=N) continue;
+        const k = key(nr,nc);
+        if(state.p1.shots.has(k)) continue;
+        if(aiTargets.some(t => t[0]===nr && t[1]===nc)) continue;
+        aiTargets.push([nr,nc]);
+      }
+    }
+
     function aiMove(){
       if(phase!=='battle') return;
       let r,c;
-      const list=[];
-      for(let i=0;i<N;i++) for(let j=0;j<N;j++) if(!state.p1.shots.has(key(i,j))) list.push([i,j]);
 
-      if(difficulty==='schwer') list.sort((a,b)=>((b[0]+b[1])%2)-((a[0]+a[1])%2));
-      [r,c] = list[(Math.random()*list.length)|0];
+      while(aiTargets.length){
+        const t = aiTargets.shift();
+        if(!state.p1.shots.has(key(t[0],t[1]))){
+          [r,c] = t;
+          break;
+        }
+      }
 
+      if(r===undefined){
+        const list=[];
+        for(let i=0;i<N;i++) for(let j=0;j<N;j++) if(!state.p1.shots.has(key(i,j))) list.push([i,j]);
+        if(difficulty==='schwer') list.sort((a,b)=>((b[0]+b[1])%2)-((a[0]+a[1])%2));
+        [r,c] = list[(Math.random()*list.length)|0];
+      }
+
+      const willHit = !!state.p1.board[r][c].ship;
       const fakeEl = document.querySelector(`#boardLeft .cell[data-r='${r}'][data-c='${c}']`);
       battleClick('left',r,c,fakeEl);
+      if(willHit) enqueueAiNeighbors(r,c);
     }
 
     function checkGameOver(){
@@ -662,6 +687,7 @@
       currentPlayer = 1;
       placementPlayer = 1;
       selShip = null;
+      aiTargets = [];
       document.getElementById('postGameRow')?.classList.add('hide');
       document.getElementById('placement').classList.add('hide');
       document.getElementById('boards').classList.add('hide');
