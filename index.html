@@ -66,6 +66,22 @@
       padding: 10px;
       box-shadow: inset 0 0 10px rgba(62,131,204,.15);
     }
+    .hud {
+      display:grid;
+      grid-template-columns: repeat(4,minmax(110px,1fr));
+      gap:8px;
+      margin-bottom:10px;
+    }
+    .hud .box{
+      border:1px solid #3f5a79;
+      background: rgba(9,22,38,.75);
+      border-radius:8px;
+      padding:8px;
+      text-align:center;
+      font-size:12px;
+      color:#bdd0e6;
+    }
+    .hud .box b{display:block; font-size:14px; color:#e8f2ff; margin-top:2px;}
     .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 10px 0; }
     button {
       background: linear-gradient(135deg, #2a3c55, #334862 55%, #415775);
@@ -273,6 +289,12 @@
     </div>
 
     <div id="status" class="status hide"></div>
+    <div id="hud" class="hud hide">
+      <div class="box">Rolle<b id="hudRole">-</b></div>
+      <div class="box">Zug<b id="hudTurn">-</b></div>
+      <div class="box">Schüsse<b id="hudShots">0</b></div>
+      <div class="box">Trefferquote<b id="hudAcc">0%</b></div>
+    </div>
 
     <div class="boards hide" id="boards">
       <div class="panel">
@@ -367,11 +389,13 @@
       document.getElementById('placement').classList.remove('hide');
       document.getElementById('boards').classList.remove('hide');
       document.getElementById('status').classList.remove('hide');
+      document.getElementById('hud').classList.remove('hide');
 
       renderShipList();
       renderBoards();
       setPlacementTitle();
       setStatus('Platziere deine Flotte.');
+      updateHud();
     }
 
     function setPlacementTitle(){
@@ -591,6 +615,7 @@
       setStatus(mode==='ai' ? 'Dein Zug auf dem rechten Feld.' : 'Spieler 1 beginnt auf dem rechten Feld.');
       playSfx('turn');
       refreshBoardVisuals();
+      updateHud();
     }
 
     function battleClick(side,r,c,el){
@@ -634,6 +659,7 @@
       currentPlayer = currentPlayer===1 ? 2 : 1;
       refreshBoardVisuals();
       checkGameOver();
+      updateHud();
       if (phase==='battle' && mode==='ai' && currentPlayer===1) {
         setStatus('Dein Zug auf dem rechten Feld.');
       }
@@ -747,6 +773,7 @@
       document.getElementById('placement').classList.add('hide');
       document.getElementById('boards').classList.add('hide');
       document.getElementById('status').classList.add('hide');
+      document.getElementById('hud').classList.add('hide');
       document.getElementById('setup').classList.remove('hide');
       
     }
@@ -771,6 +798,23 @@
     }
 
     function setStatus(t){ document.getElementById('status').textContent=t; }
+
+    function updateHud(){
+      const isP1Turn = currentPlayer===1;
+      const shooter = isP1Turn ? state.p1 : (mode==='ai' ? state.ai : state.p2);
+      const role = mode==='ai'
+        ? (isP1Turn ? 'Kommandant' : 'KI')
+        : (isP1Turn ? 'Spieler 1' : 'Spieler 2');
+      const turn = phase==='placement' ? 'Platzierung' : (phase==='over' ? 'Ende' : (isP1Turn ? 'Dein Zug' : 'Gegnerzug'));
+      const shots = shooter.totalShots || 0;
+      const acc = shots ? Math.round(((shooter.hits||0) / shots) * 100) : 0;
+
+      const byId = (id,val)=>{ const el=document.getElementById(id); if(el) el.textContent=val; };
+      byId('hudRole', role);
+      byId('hudTurn', turn);
+      byId('hudShots', String(shots));
+      byId('hudAcc', `${acc}%`);
+    }
 
     function initSprites(){
       for(const s of SHIPS) sprites[s.id]=makeShipSprite(24, s.hue);
